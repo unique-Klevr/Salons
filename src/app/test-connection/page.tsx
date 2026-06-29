@@ -3,7 +3,17 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 
 function getErrorMessage(error: unknown) {
-  return error instanceof Error ? error.message : 'An unknown error occurred.';
+  if (error instanceof Error) return error.message;
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'message' in error &&
+    typeof error.message === 'string'
+  ) {
+    return error.message;
+  }
+
+  return 'An unknown error occurred.';
 }
 
 export default function TestConnection() {
