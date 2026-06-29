@@ -2,9 +2,28 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 
+type StaffOption = {
+  id: string;
+  name: string;
+};
+
+type Transaction = {
+  id: string;
+  created_at: string;
+  service_amount: number;
+  tip_amount: number;
+  processing_fee_on_tip: number;
+  net_tip_to_staff: number;
+  staff: { name: string }[] | null;
+};
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : 'An unknown error occurred.';
+}
+
 export default function TransactionsPage() {
-  const [staff, setStaff] = useState<any[]>([]);
-  const [transactions, setTransactions] = useState<any[]>([]);
+  const [staff, setStaff] = useState<StaffOption[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [formData, setFormData] = useState({
     staff_id: '',
     service_amount: '',
@@ -20,7 +39,7 @@ export default function TransactionsPage() {
 
   async function fetchStaff() {
     const { data } = await supabase.from('staff').select('id, name').order('name');
-    setStaff(data || []);
+    setStaff((data as StaffOption[] | null) || []);
   }
 
   async function fetchTransactions() {
@@ -39,7 +58,7 @@ export default function TransactionsPage() {
       .limit(10);
 
     if (error) console.error('Error fetching transactions:', error);
-    else setTransactions(data || []);
+    else setTransactions((data as Transaction[] | null) || []);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -64,8 +83,8 @@ export default function TransactionsPage() {
       setMessage({ type: 'success', text: 'Transaction logged! Staff balance updated.' });
       setFormData({ staff_id: '', service_amount: '', tip_amount: '' });
       fetchTransactions();
-    } catch (e: any) {
-      setMessage({ type: 'error', text: e.message });
+    } catch (e: unknown) {
+      setMessage({ type: 'error', text: getErrorMessage(e) });
     } finally {
       setLoading(false);
     }
@@ -156,7 +175,7 @@ export default function TransactionsPage() {
                     ) : (
                       transactions.map((tx) => (
                         <tr key={tx.id} className="hover:bg-slate-50 transition-colors">
-                          <td className="px-6 py-4 font-medium text-slate-900">{tx.staff?.name || 'Unknown'}</td>
+                          <td className="px-6 py-4 font-medium text-slate-900">{tx.staff?.[0]?.name || 'Unknown'}</td>
                           <td className="px-6 py-4 text-right font-mono">${tx.tip_amount.toFixed(2)}</td>
                           <td className="px-6 py-4 text-right font-mono text-red-500">-${tx.processing_fee_on_tip.toFixed(2)}</td>
                           <td className="px-6 py-4 text-right font-mono font-bold text-teal-600">${tx.net_tip_to_staff.toFixed(2)}</td>

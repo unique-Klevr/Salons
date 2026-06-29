@@ -2,8 +2,15 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 
+type StaffMember = {
+  id: string;
+  name: string;
+  email: string | null;
+  current_tip_balance: number;
+};
+
 export default function StaffPage() {
-  const [staff, setStaff] = useState<any[]>([]);
+  const [staff, setStaff] = useState<StaffMember[]>([]);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(true);
@@ -20,7 +27,7 @@ export default function StaffPage() {
       .order('name', { ascending: true });
     
     if (error) console.error('Error fetching staff:', error);
-    else setStaff(data || []);
+    else setStaff((data as StaffMember[] | null) || []);
     setLoading(false);
   }
 

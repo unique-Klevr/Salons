@@ -2,6 +2,10 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : 'An unknown error occurred.';
+}
+
 export default function TestConnection() {
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [errorMsg, setErrorMsg] = useState('');
@@ -9,11 +13,17 @@ export default function TestConnection() {
   useEffect(() => {
     async function checkConnection() {
       try {
-        const { error } = await supabase.from('profiles').select('*').limit(1);
-        if (error) throw error;
+        const checks = await Promise.all([
+          supabase.from('staff').select('id').limit(1),
+          supabase.from('transactions').select('id').limit(1),
+        ]);
+
+        const failedCheck = checks.find((check) => check.error);
+        if (failedCheck?.error) throw failedCheck.error;
+
         setStatus('success');
-      } catch (e: any) {
-        setErrorMsg(e.message);
+      } catch (e: unknown) {
+        setErrorMsg(getErrorMessage(e));
         setStatus('error');
       }
     }
@@ -36,7 +46,7 @@ export default function TestConnection() {
             <span className="text-sm font-normal text-gray-600">{errorMsg}</span>
           </div>
         )}
-        <p className="mt-6 text-xs text-gray-400">If you see an error, check your .env.local keys!</p>
+        <p className="mt-6 text-xs text-gray-400">If you see an error, check your .env.local keys and run supabase/schema.sql.</p>
       </div>
     </div>
   );

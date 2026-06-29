@@ -2,13 +2,24 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 
+type DashboardTransaction = {
+  service_amount: number | string;
+  tip_amount: number | string;
+  processing_fee_on_tip: number | string;
+};
+
+type StaffLiability = {
+  name: string;
+  current_tip_balance: number;
+};
+
 export default function DashboardPage() {
   const [stats, setStats] = useState({
     totalRevenue: 0,
     totalTips: 0,
     totalLeak: 0,
   });
-  const [staffLiability, setStaffLiability] = useState<any[]>([]);
+  const [staffLiability, setStaffLiability] = useState<StaffLiability[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -23,9 +34,10 @@ export default function DashboardPage() {
         .select('service_amount, tip_amount, processing_fee_on_tip');
 
       if (txData) {
-        const revenue = txData.reduce((acc, curr) => acc + Number(curr.service_amount), 0);
-        const tips = txData.reduce((acc, curr) => acc + Number(curr.tip_amount), 0);
-        const leak = txData.reduce((acc, curr) => acc + Number(curr.processing_fee_on_tip), 0);
+        const transactions = txData as DashboardTransaction[];
+        const revenue = transactions.reduce((acc, curr) => acc + Number(curr.service_amount), 0);
+        const tips = transactions.reduce((acc, curr) => acc + Number(curr.tip_amount), 0);
+        const leak = transactions.reduce((acc, curr) => acc + Number(curr.processing_fee_on_tip), 0);
         setStats({ totalRevenue: revenue, totalTips: tips, totalLeak: leak });
       }
 
@@ -34,7 +46,7 @@ export default function DashboardPage() {
         .select('name, current_tip_balance')
         .order('current_tip_balance', { ascending: false });
 
-      setStaffLiability(staffData || []);
+      setStaffLiability((staffData as StaffLiability[] | null) || []);
     } catch (e) {
       console.error('Error loading dashboard:', e);
     } finally {
