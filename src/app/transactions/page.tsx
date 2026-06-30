@@ -7,6 +7,11 @@ type StaffOption = {
   name: string;
 };
 
+type ClientOption = {
+  id: string;
+  name: string;
+};
+
 type Transaction = {
   id: string;
   created_at: string;
@@ -15,6 +20,7 @@ type Transaction = {
   processing_fee_on_tip: number;
   net_tip_to_staff: number;
   staff: { name: string }[] | null;
+  clients: { name: string }[] | null;
 };
 
 function getErrorMessage(error: unknown) {
@@ -33,9 +39,11 @@ function getErrorMessage(error: unknown) {
 
 export default function TransactionsPage() {
   const [staff, setStaff] = useState<StaffOption[]>([]);
+  const [clients, setClients] = useState<ClientOption[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [formData, setFormData] = useState({
     staff_id: '',
+    client_id: '',
     service_amount: '',
     tip_amount: '',
   });
@@ -44,12 +52,18 @@ export default function TransactionsPage() {
 
   useEffect(() => {
     fetchStaff();
+    fetchClients();
     fetchTransactions();
   }, []);
 
   async function fetchStaff() {
     const { data } = await supabase.from('staff').select('id, name').order('name');
     setStaff((data as StaffOption[] | null) || []);
+  }
+
+  async function fetchClients() {
+    const { data } = await supabase.from('clients').select('id, name').order('name');
+    setClients((data as ClientOption[] | null) || []);
   }
 
   async function fetchTransactions() {
@@ -62,7 +76,8 @@ export default function TransactionsPage() {
         tip_amount, 
         processing_fee_on_tip, 
         net_tip_to_staff, 
-        staff ( name )
+        staff ( name ),
+        clients ( name )
       `)
       .order('created_at', { ascending: false })
       .limit(10);
@@ -84,6 +99,7 @@ export default function TransactionsPage() {
         .insert([{
           salon_id: user?.id,
           staff_id: formData.staff_id,
+          client_id: formData.client_id,
           service_amount: parseFloat(formData.service_amount),
           tip_amount: parseFloat(formData.tip_amount),
         }]);
@@ -91,7 +107,7 @@ export default function TransactionsPage() {
       if (error) throw error;
 
       setMessage({ type: 'success', text: 'Transaction logged! Staff balance updated.' });
-      setFormData({ staff_id: '', service_amount: '', tip_amount: '' });
+      setFormData({ staff_id: '', client_id: '', service_amount: '', tip_amount: '' });
       fetchTransactions();
     } catch (e: unknown) {
       setMessage({ type: 'error', text: getErrorMessage(e) });
@@ -127,6 +143,19 @@ export default function TransactionsPage() {
                 >
                   <option value="">Select employee...</option>
                   {staff.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Client</label>
+                <select
+                  value={formData.client_id}
+                  onChange={(e) => setFormData({...formData, client_id: e.target.value})}
+                  className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white text-sm"
+                  required
+                >
+                  <option value="">Select client...</option>
+                  {clients.map(client => <option key={client.id} value={client.id}>{client.name}</option>)}
                 </select>
               </div>
 
@@ -174,6 +203,7 @@ export default function TransactionsPage() {
                   <thead className="bg-slate-50 text-slate-500">
                     <tr>
                       <th className="px-6 py-3 font-medium">Staff</th>
+                      <th className="px-6 py-3 font-medium">Client</th>
                       <th className="px-6 py-3 font-medium text-right">Tip</th>
                       <th className="px-6 py-3 font-medium text-right text-red-500">Fee (3%)</th>
                       <th className="px-6 py-3 font-medium text-right text-teal-600">Net</th>
@@ -181,11 +211,12 @@ export default function TransactionsPage() {
                   </thead>
                   <tbody className="divide-y divide-slate-200">
                     {transactions.length === 0 ? (
-                      <tr><td colSpan={4} className="px-6 py-10 text-center text-slate-400">No transactions yet.</td></tr>
+                      <tr><td colSpan={5} className="px-6 py-10 text-center text-slate-400">No transactions yet.</td></tr>
                     ) : (
                       transactions.map((tx) => (
                         <tr key={tx.id} className="hover:bg-slate-50 transition-colors">
                           <td className="px-6 py-4 font-medium text-slate-900">{tx.staff?.[0]?.name || 'Unknown'}</td>
+                          <td className="px-6 py-4 text-slate-500">{tx.clients?.[0]?.name || 'Unknown'}</td>
                           <td className="px-6 py-4 text-right font-mono">${tx.tip_amount.toFixed(2)}</td>
                           <td className="px-6 py-4 text-right font-mono text-red-500">-${tx.processing_fee_on_tip.toFixed(2)}</td>
                           <td className="px-6 py-4 text-right font-mono font-bold text-teal-600">${tx.net_tip_to_staff.toFixed(2)}</td>

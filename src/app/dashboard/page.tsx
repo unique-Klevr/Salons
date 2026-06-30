@@ -13,6 +13,8 @@ type StaffLiability = {
   current_tip_balance: number;
 };
 
+type DateFilter = 'all' | '7d' | '30d' | 'year';
+
 export default function DashboardPage() {
   const [stats, setStats] = useState({
     totalRevenue: 0,
@@ -21,17 +23,25 @@ export default function DashboardPage() {
   });
   const [staffLiability, setStaffLiability] = useState<StaffLiability[]>([]);
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    loadDashboardData();
-  }, []);
+  const [filter, setFilter] = useState<DateFilter>('all');
 
   async function loadDashboardData() {
     setLoading(true);
     try {
-      const { data: txData } = await supabase
+      let query = supabase
         .from('transactions')
         .select('service_amount, tip_amount, processing_fee_on_tip');
+
+      if (filter !== 'all') {
+        const date = new Date();
+        if (filter === '7d') date.setDate(date.getDate() - 7);
+        if (filter === '30d') date.setDate(date.getDate() - 30);
+        if (filter === 'year') date.setFullYear(date.getFullYear() - 1);
+        
+        query = query.gte('created_at', date.toISOString());
+      }
+
+      const { data: txData } = await query;
 
       if (txData) {
         const transactions = txData as DashboardTransaction[];
@@ -54,20 +64,39 @@ export default function DashboardPage() {
     }
   }
 
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadDashboardData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filter]);
+
   return (
     <div className="min-h-screen bg-slate-50 p-6">
       <div className="max-w-6xl mx-auto">
-        <header className="mb-8 flex justify-between items-center">
+        <header className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold text-slate-900">Business Overview</h1>
             <p className="text-slate-500">Tracking your revenue and tip leaks.</p>
           </div>
-          <button 
-            onClick={loadDashboardData}
-            className="text-sm bg-white border border-slate-200 px-4 py-2 rounded-lg hover:bg-slate-100 transition-colors"
-          >
-            Refresh Data
-          </button>
+          
+          <div className="flex items-center gap-3">
+            <select 
+              value={filter}
+              onChange={(e) => setFilter(e.target.value as DateFilter)}
+              className="text-sm bg-white border border-slate-200 px-3 py-2 rounded-lg outline-none focus:ring-2 focus:ring-teal-500"
+            >
+              <option value="all">All Time</option>
+              <option value="7d">Last 7 Days</option>
+              <option value="30d">Last 30 Days</option>
+              <option value="year">Last Year</option>
+            </select>
+            <button 
+              onClick={loadDashboardData}
+              className="text-sm bg-white border border-slate-200 px-4 py-2 rounded-lg hover:bg-slate-100 transition-colors"
+            >
+              Refresh
+            </button>
+          </div>
         </header>
 
         {loading ? (
